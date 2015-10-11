@@ -20,14 +20,14 @@ On peut alors threader le programme :
   Communication par FIFO entre thread capteur et thread SD.
   
 HardWare prévu :
-  Arduino ProMini 5V 16Mhz
-  Baro BMP085               I2C
-  GPS Ublox-neo6m           USART
-  Ecran Oled                I2C
-  Adaptateur SD             SPI
+  -Arduino ProMini 5V 16Mhz
+  -Baro BMP085               I2C
+  -GPS Ublox-neo6m           USART
+  -Ecran Oled                I2C
+  -Adaptateur SD             SPI
   
-  Circuit Boost 3.7v -> 5V
-  Chargeur USB pour LiPo 1s
-  Interface bouton
+  -Circuit Boost 3.7v -> 5V
+  -Chargeur USB pour LiPo 1s
+  -Interface bouton
   
   
