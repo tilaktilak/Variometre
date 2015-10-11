@@ -22,7 +22,10 @@ SemaphoreHandle_t fifoSpace;
 // data type for fifo item
 struct FifoItem_t {
     uint32_t usec;
-    int value;
+    int lat;
+    int lon;
+    int alt_gps;
+    int alt_bmp;
     int error;
 };
 // array of data items
@@ -52,8 +55,10 @@ static void Task1(void *arg) {
         FifoItem_t* p = &fifoArray[fifoHead];
         p->usec = micros();
         // replace next line with data read from sensor such as
-        // p->value = analogRead(0);
-        p->value = count++;
+        // p->lat = analogRead(0);
+        p->lat = count++;
+        p->lon = count++;
+        p->alt_gps = count++;
         p->error = error;
         error = 0;
         // signal new data
@@ -69,11 +74,24 @@ static void Task2(void *arg) {
     size_t fifoTail = 0;
     // time in micros of last point
     uint32_t last = 0;
+    char value[6];
     while(1) {
         // wait for next data record
         xSemaphoreTake(fifoData, portMAX_DELAY);
         FifoItem_t* p = &fifoArray[fifoTail];
-        Serial.println(p->value);
+        Serial.println("B");
+        Serial.print(p->usec);
+        sprintf(value,"%06d",p->lat);
+        Serial.print(value);
+        sprintf(value,"%06d",p->lon);
+        Serial.print("N");
+        Serial.print(value);
+        Serial.print("W");
+        Serial.print("A");
+        sprintf(value,"%05d",p->alt_gps);
+        Serial.print(value);
+        sprintf(value,"%05d",p->alt_bmp);
+        Serial.print(value);
 #if 0
         // print interval between points
         if (last) {
@@ -83,7 +101,7 @@ static void Task2(void *arg) {
         }
         last = p->usec;
         file.write(',');
-        file.print(p->value);
+        file.print(p->lat);
         file.write(',');
         file.println(p->error);
         // release record
