@@ -73,6 +73,8 @@ static void Task2(void *arg) {
         // wait for next data record
         xSemaphoreTake(fifoData, portMAX_DELAY);
         FifoItem_t* p = &fifoArray[fifoTail];
+        Serial.println(p->value);
+#if 0
         // print interval between points
         if (last) {
             file.print(p->usec - last);
@@ -85,13 +87,15 @@ static void Task2(void *arg) {
         file.write(',');
         file.println(p->error);
         // release record
+#endif
         xSemaphoreGive(fifoSpace);
         // advance FIFO index
         fifoTail = fifoTail < (FIFO_SIZE - 1) ? fifoTail + 1 : 0;
         // check for end run
         if (Serial.available()) {
-            // close file to insure data is saved correctly
+#if 0      // close file to insure data is saved correctly
             file.close();
+#endif
             // print messages
             Serial.println(F("Done"));
             Serial.print(F("Task1 unused stack entries: "));
@@ -112,13 +116,14 @@ void setup() {
     Serial.begin(9600);
     Serial.println(F("Type any character to begin"));
     while(!Serial.available());
-    noTone(2);
     // open file
+#if 0
     if (!sd.begin(sdChipSelect)
             || !file.open("DATA.CSV", O_CREAT | O_WRITE | O_TRUNC)) {
         Serial.println(F("SD problem"));
         sd.errorHalt();
     }
+#endif
     // initialize fifoData semaphore to no data available
     fifoData = xSemaphoreCreateCounting(FIFO_SIZE, 0);
     // initialize fifoSpace semaphore to FIFO_SIZE free records
