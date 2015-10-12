@@ -80,8 +80,8 @@ NIL_WORKING_AREA(waThread1, 64);
 NIL_THREAD(Thread1, arg) {
 
     static period_t     old_time;
-    static uint16_t     old_pres
-
+    static uint16_t     old_pres;
+    uint16_t            new_pres;
     // Index of record to be filled.
     size_t fifoHead = 0;
 
@@ -120,7 +120,8 @@ NIL_THREAD(Thread1, arg) {
             p->value[0] = bmp.readTemperature();
             p->value[1] = bmp.readAltitude();
             new_pres = bmp.readPressure();
-            p->value[3] = (new_pres-old_pres)/(p->usec - old_time); // Pressure derivative
+            //p->value[2] = (new_pres-old_pres)/(p->usec - old_time); // Pressure derivative
+            p->value[2] = new_pres-old_pres;
             old_pres = new_pres;
             old_time = p->usec;
         //}
@@ -254,6 +255,9 @@ void loop() {
     Serial.print("\r\n");
     Serial.println("Altitude:");
     Serial.print(p->value[1]);
+    Serial.print("\r\n");
+    Serial.println("Pressure Deriv:");
+    Serial.print(p->value[2]);
     Serial.print("\r\n");
 #if 0
     // Print interval between points.
