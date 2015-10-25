@@ -78,6 +78,8 @@ void loop() {
   static float alt,old_alt,smooth;
   static float derivative;
   static int16_t freq;
+  static uint8_t count_lcd = 0;
+  static uint8_t count_sd = 0;
 
 
   char heure[8];
@@ -112,6 +114,8 @@ if((old_usec - usec)>=250){
 
   switch(count){
     case 1 : // Print data on screen
+      count_lcd ++;
+      if(count_lcd == 5){
       lcd.setCursor(0,1);
       lcd.print("smooth :");
       lcd.print(smooth);
@@ -131,8 +135,12 @@ if((old_usec - usec)>=250){
       lcd.setCursor(0,4);
       lcd.print("rate: ");
       lcd.print(derivative);
+      count_lcd = 0;
+      }
       break;
      case 2: // Write data to SD Card
+       count_sd ++;
+       if(count_sd == 5){
        dataFile = SD.open("data.txt",FILE_WRITE);
        if(dataFile){
           dataFile.println(smooth);
@@ -141,8 +149,10 @@ if((old_usec - usec)>=250){
           lcd.setCursor(0,5);
           lcd.print("Write fail");
        }
+       count_sd = 0;
+       }
        case 3: // Make beep
-       #define ZERO_LEVEL 0.18
+       #define ZERO_LEVEL 0.20
         if(abs(derivative) >= ZERO_LEVEL){
           duration = (int) 100 + 50/abs(derivative);}
           else{
@@ -150,9 +160,9 @@ if((old_usec - usec)>=250){
           }
           duration = constrain(duration,0,400);
           //freq = (unsigned int)smooth_derivative / 500 ;
-  lcd.setCursor(0,5);
-  lcd.print(duration);
-          freq =(int) (640 + 100*derivative);
+          lcd.setCursor(0,5);
+          lcd.print(duration);
+          freq =(int) (640 + 120*derivative);
           //if(derivative > 0.0) freq += 300;
           //else{freq += 300;}
           freq = constrain(freq,40,4000);
