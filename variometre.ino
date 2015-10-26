@@ -6,6 +6,21 @@
 #include <SD.h>
 #include <PCD8544.h>
 #include <EEPROM.h>
+#include "charset.cpp"
+
+#define SIZE_MEM  13
+typedef union __attribute__((__packed__)){
+  struct __attribute__((__packed__)){
+    uint8_t index;
+    float   alt_max;
+    float   rate_max;
+    uint32_t minutes;
+  };
+  char raw[SIZE_MEM];
+
+}memory_t;
+
+memory_t mem;
 
 TinyGPSPlus gps;
 // Software SPI (slower updates, more flexible pin options):
@@ -20,15 +35,30 @@ static PCD8544 lcd;
 static Adafruit_BMP085 bmp;
 
 File dataFile;
-  char filename[9] = "vari.igc";
+char filename[9] = "vari.igc";
+
+void read_EEPROM() {
+  for (int i = 0; i < SIZE_MEM; i++){
+    mem.raw[i] = EEPROM.read(i);
+  }
+}
+
+void write_EEPROM() {
+  for (int i = 0; i < SIZE_MEM;i++){
+    EEPROM.write(i,mem.raw[i]);
+  }
+}
+
 void setup() {
 
   // Fetch last file index
-  static uint8_t index = EEPROM.read(0x00);
-  EEPROM.write(0x00, ++index);
-  filename[1] = (index/100)%10 + '0';
-  filename[2] = (index/10)%10 + '0';
-  filename[3] = (index)%10 + '0';
+  /*static uint8_t index = EEPROM.read(0x00);
+  EEPROM.write(0x00, ++index);*/
+  read_EEPROM();
+  filename[1] = (mem.index / 100) % 10 + '0';
+  filename[2] = (mem.index / 10) % 10 + '0';
+  filename[3] = (mem.index) % 10 + '0';
+  mem.index ++;
   Serial.begin(9600);
 
   // PCD8544-compatible displays may have a different resolution...
@@ -96,6 +126,9 @@ void loop() {
   hour = minu / 60;
 
   alt = bmp.readAltitude();
+  // Update stat
+  if(mem.alt_max < alt) mem.alt_max = alt;
+  
   if (inits) {
     smooth = alt;
     old_alt = alt;
@@ -111,7 +144,8 @@ void loop() {
     old_usec = usec;
     old_alt = smooth;
   }
-
+  // Update stat
+  if(mem.rate_max < derivative) mem.rate_max = derivative;
 
 
   switch (count) {
@@ -135,9 +169,9 @@ void loop() {
         if ((sec % 60) < 10) lcd.print("0");
         lcd.print(sec % 60);
         lcd.setCursor(0, 4);
-        lcd.print("rate: ");
-        lcd.print(derivative);
-        lcd.setCursor(0,5);
+        lcd.print("+");
+        lcd.drawBitmap(charset[(int)derivative+10],5,8);
+        lcd.setCursor(0, 5);
         lcd.print((gps.location.isValid()));
         count_lcd = 0;
       }
@@ -147,6 +181,9 @@ void loop() {
       if (count_sd == 8) {
         dataFile = SD.open(filename , FILE_WRITE);
         if (dataFile) {
+          // TODO : Error decimal degree -> degree minute !
+          // http://www.rapidtables.com/convert/number/degrees-to-degrees-minutes-seconds.htm
+
           dataFile.print("B");
           if (gps.time.hour() < 10) dataFile.print(F("0"));
           dataFile.print(gps.time.hour());
@@ -157,25 +194,25 @@ void loop() {
           if (gps.time.second() < 10) dataFile.print(F("0"));
           dataFile.print(gps.time.second());
 
-          if((gps.location.lat())<10.0) dataFile.print(F("0"));
-          dataFile.print(gps.location.lat()*100000,0);
+          if ((gps.location.lat()) < 10.0) dataFile.print(F("0"));
+          dataFile.print(gps.location.lat() * 100000, 0);
           dataFile.print("N");
-          if((gps.location.lng())<10.0) dataFile.print(F("00"));
-          else if((gps.location.lng())<100.0) dataFile.print(F("0"));
-          dataFile.print(gps.location.lng()*100000,0);
+          if ((gps.location.lng()) < 10.0) dataFile.print(F("00"));
+          else if ((gps.location.lng()) < 100.0) dataFile.print(F("0"));
+          dataFile.print(gps.location.lng() * 100000, 0);
           dataFile.print("WA");
-          if(smooth<10)dataFile.print("0000");
-          else if(smooth<100) dataFile.print("000");
-          else if(smooth<1000) dataFile.print("00");
-          else if(smooth<10000) dataFile.print("0");
-          dataFile.print(smooth,0);
-          
-          if(smooth<10)dataFile.print("0000");
-          else if(smooth<100) dataFile.print("000");
-          else if(smooth<1000) dataFile.print("00");
-          else if(smooth<10000) dataFile.print("0");
-          dataFile.println(gps.altitude.meters(),0);
-          
+          if (smooth < 10)dataFile.print("0000");
+          else if (smooth < 100) dataFile.print("000");
+          else if (smooth < 1000) dataFile.print("00");
+          else if (smooth < 10000) dataFile.print("0");
+          dataFile.print(smooth, 0);
+
+          if (smooth < 10)dataFile.print("0000");
+          else if (smooth < 100) dataFile.print("000");
+          else if (smooth < 1000) dataFile.print("00");
+          else if (smooth < 10000) dataFile.print("0");
+          dataFile.println(gps.altitude.meters(), 0);
+
           dataFile.close();
         } else {
           lcd.setCursor(0, 5);
@@ -216,8 +253,12 @@ void loop() {
       while (Serial.available() > 0) {
         gps.encode(Serial.read());
       }
-      count = 0;
       break;
+      case 5 : 
+        write_EEPROM();
+        count = 0;
+      break;
+      
 
     default:
       break;
