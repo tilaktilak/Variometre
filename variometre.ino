@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 //#include <TinyGPS++.h>
 
 #include <SPI.h>
@@ -444,4 +445,3 @@ void loop() {
     }
     count++;
 }
-
