@@ -83,6 +83,7 @@ void nmea_read(char c){
     }
     if(c==','){
 	field++;
+	uint8_t i;
 	switch(field){
 	    case 1:
 		if(buf[1]=='G'&&buf[2]=='P'&&buf[3]=='R'&&buf[4]=='M'&&buf[5]=='C'){
@@ -104,12 +105,14 @@ void nmea_read(char c){
 		// Check field 
 	    case 4:
 		if(buf[index-1]!=','){
-		    cur_igc.lat[0] = buf[index-7];
+		    for(i=0;i<7;i++)
+			cur_igc.lat[i] = buf[index-(7-i)];
+		    /*cur_igc.lat[0] = buf[index-7];
 		    cur_igc.lat[1] = buf[index-6];
 		    cur_igc.lat[2] = buf[index-5];
 		    cur_igc.lat[3] = buf[index-4];
 		    cur_igc.lat[4] = buf[index-2];
-		    cur_igc.lat[5] = buf[index-1];
+		    cur_igc.lat[5] = buf[index-1];*/
 		    cur_igc.lat[6] = '0';
 		}
 	    case 5:
@@ -119,13 +122,15 @@ void nmea_read(char c){
 		break;
 	    case 6:
 		if(buf[index-1]!=','){
-		    cur_igc.lng[0] = buf[index-8];
+		    for(i=0;i<8;i++)
+			cur_igc.lng[i] = buf[index-(8-i)];
+		    /*cur_igc.lng[0] = buf[index-8];
 		    cur_igc.lng[1] = buf[index-7];
 		    cur_igc.lng[2] = buf[index-6];
 		    cur_igc.lng[3] = buf[index-5];
 		    cur_igc.lng[4] = buf[index-4];
 		    cur_igc.lng[5] = buf[index-2];
-		    cur_igc.lng[6] = buf[index-1];
+		    cur_igc.lng[6] = buf[index-1];*/
 		    cur_igc.lng[7] = '0';
 		}
 	    case 7:
