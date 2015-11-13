@@ -68,7 +68,8 @@ igc_t cur_igc;
 
 char is_gps_valid = 'E';
 bool new_gpsD = false;
-char test[] ="$GPRMC,220516,A,5133.82,N,00042.24,W,173.8,231.8,130694,004.2,W*70";
+//char test[] ="$GPRMC,220516,A,5133.82,N,00042.24,W,173.8,231.8,130694,004.2,W*70";
+char test[] ="$GPGGA,064036.289,4836.5375,N,00740.9373,E,1,04,3.2,200.2,M,,,,0000*0E";3
 
 void nmea_read(char c){
     //		    1	  2    3    4    5   6      7   8    9     
@@ -86,7 +87,7 @@ void nmea_read(char c){
 	uint8_t i;
 	switch(field){
 	    case 1:
-		if(buf[1]=='G'&&buf[2]=='P'&&buf[3]=='R'&&buf[4]=='M'&&buf[5]=='C'){
+		if(buf[1]=='G'&&buf[2]=='P'&&buf[3]=='G'&&buf[4]=='G'&&buf[5]=='A'){
 		    // New packet to parse
 		}
 		else{
@@ -94,43 +95,27 @@ void nmea_read(char c){
 		    field = 0;
 		}
 		break;
-		// Check field 2 : time
 	    case 2:
+		if(buf[index-1]!=','){
 		for(i=0;i<6;i++)
-		    cur_igc.time[i] = buf[index-(6-i)];
+		    cur_igc.time[i] = buf[index-(10-i)];
+		}
 		break;
 	    case 3:
-		is_gps_valid = buf[index-1];
-		break;
-		// Check field 
-	    case 4:
 		if(buf[index-1]!=','){
 		    for(i=0;i<7;i++)
-			cur_igc.lat[i] = buf[index-(7-i)];
-		    /*cur_igc.lat[0] = buf[index-7];
-		    cur_igc.lat[1] = buf[index-6];
-		    cur_igc.lat[2] = buf[index-5];
-		    cur_igc.lat[3] = buf[index-4];
-		    cur_igc.lat[4] = buf[index-2];
-		    cur_igc.lat[5] = buf[index-1];*/
+			cur_igc.lat[i] = buf[index-(9-i)];
 		    cur_igc.lat[6] = '0';
 		}
-	    case 5:
+	    case 4:
 		if(buf[index-1]!=','){
 		    cur_igc.lat[7] = buf[index-1];
 		}
 		break;
-	    case 6:
+	    case 5:
 		if(buf[index-1]!=','){
 		    for(i=0;i<8;i++)
-			cur_igc.lng[i] = buf[index-(8-i)];
-		    /*cur_igc.lng[0] = buf[index-8];
-		    cur_igc.lng[1] = buf[index-7];
-		    cur_igc.lng[2] = buf[index-6];
-		    cur_igc.lng[3] = buf[index-5];
-		    cur_igc.lng[4] = buf[index-4];
-		    cur_igc.lng[5] = buf[index-2];
-		    cur_igc.lng[6] = buf[index-1];*/
+			cur_igc.lng[i] = buf[index-(10-i)];
 		    cur_igc.lng[7] = '0';
 		}
 	    case 7:
@@ -143,6 +128,52 @@ void nmea_read(char c){
 		break;
 	}
     }
+#if GPRMC
+	switch(field){
+	    case 1:
+		if(buf[1]=='G'&&buf[2]=='P'&&buf[3]=='R'&&buf[4]=='M'&&buf[5]=='C'){
+		    // New packet to parse
+		}
+		else{
+		    index = 0;
+		    field = 0;
+		}
+		break;
+	    case 2:
+		for(i=0;i<6;i++)
+		    cur_igc.time[i] = buf[index-(6-i)];
+		break;
+	    case 3:
+		is_gps_valid = buf[index-1];
+		break;
+	    case 4:
+		if(buf[index-1]!=','){
+		    for(i=0;i<7;i++)
+			cur_igc.lat[i] = buf[index-(7-i)];
+		    cur_igc.lat[6] = '0';
+		}
+	    case 5:
+		if(buf[index-1]!=','){
+		    cur_igc.lat[7] = buf[index-1];
+		}
+		break;
+	    case 6:
+		if(buf[index-1]!=','){
+		    for(i=0;i<8;i++)
+			cur_igc.lng[i] = buf[index-(8-i)];
+		    cur_igc.lng[7] = '0';
+		}
+	    case 7:
+		if(buf[index-1]!=','){
+		    cur_igc.lng[8] = buf[index-1];
+		}
+		break;
+	    case 8:
+		new_gpsD = true;
+		break;
+	}
+    }
+#endif
     index++;
 }
 void setup() {
@@ -388,19 +419,19 @@ void loop() {
 		char ccc = Serial.read();
 		nmea_read(ccc);
 
-		dataFile = SD.open(filename , FILE_WRITE);
-		if (dataFile) {	
-		dataFile.print(ccc);
-		dataFile.close();
-		}
+		//dataFile = SD.open(filename , FILE_WRITE);
+		//if (dataFile) {	
+		//dataFile.print(ccc);
+		//dataFile.close();
+		//}
 	    }
-	    //if(new_gpsD){
-		//Serial.println("");
-		//for(int j = 0;j<sizeof(cur_igc.raw);j++)
-		//    Serial.print(cur_igc.raw[j]);
+	    if(new_gpsD){
+		Serial.println("");
+		for(int j = 0;j<sizeof(cur_igc.raw);j++)
+		    Serial.print(cur_igc.raw[j]);
 	       
-		//new_gpsD = false;
-	    //}
+		new_gpsD = false;
+	    }
 	    break;
 	case 5 : 
 	    write_EEPROM();
