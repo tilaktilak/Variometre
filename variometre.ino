@@ -1,4 +1,5 @@
 #include<stdlib.h>
+#include <avr/sleep.h>
 #include <SPI.h>
 #include <Wire.h>
 #include <Adafruit_BMP085.h>
@@ -35,15 +36,18 @@ static Adafruit_BMP085 bmp;
 File dataFile;
 char filename[9] = "vari.igc";
 
-void read_EEPROM() {
-    for (uint8_t i = 0; i < SIZE_MEM; i++){
+// ADD of mem struct in EEPROM
+#define STAT_GLOBAL 0x00
+
+void read_EEPROM(byte offset) {
+    for (uint8_t i = offset; i < SIZE_MEM; i++){
         mem.raw[i] = EEPROM.read(i);
     	Serial.print(mem.raw[i]);
 	}
 }
 
-void write_EEPROM() {
-    for (uint8_t i = 0; i < SIZE_MEM;i++){
+void write_EEPROM(byte offset) {
+    for (uint8_t i = offset; i < SIZE_MEM;i++){
         EEPROM.write(i,mem.raw[i]);
     }
 }
@@ -164,16 +168,14 @@ void setup() {
     cur_igc.b = 'B';
     
     // Fetch last file index
-    //static uint8_t index = EEPROM.read(0x00);
-    //EEPROM.write(0x00, ++index);
-
 	mem.index = 0;
 	mem.alt_max = 0.0f;
 	mem.rate_max = 0.0f;
 	mem.minutes = 0;
    	// Fetch stats in memory 
     Serial.begin(9600);
-	read_EEPROM();
+
+	read_EEPROM(STAT_GLOBAL);
     Serial.println(mem.alt_max);
 	// Prepare filename with current index
     filename[1] = (mem.index / 100) % 10 + '0';
@@ -183,7 +185,12 @@ void setup() {
 
     lcd.begin(84, 48);
     lcd.clear();
-    
+   	
+	pinMode(A0, OUTPUT);// Backlight
+	pinMode(2, OUTPUT);// Tone
+	pinMode(A1, OUTPUT);// Voltage
+   	analogWrite(A0,0x00);	
+
 
     // see if the card is present and can be initialized:
     if (!SD.begin(10)) {
@@ -212,17 +219,19 @@ static int start_beep;
 static int duration, old_duration;
 static int timer;
 static bool inits = true;
+static bool in_flight = true;
 uint8_t i_t = 0;
 
 void loop() {
 
     static unsigned long sec = 0;
+    static uint8_t old_minu = 0;
     static uint8_t minu = 0;
     static uint8_t hour = 23;
     static unsigned long usec = 0;
     static unsigned long old_usec = 0;
     static float alt, old_alt, smooth;
-    static float derivative;
+    static float raw_deriv,derivative;
     static int16_t freq;
     static uint8_t count_lcd = 0;
     static uint8_t count_sd = 0;
@@ -239,10 +248,6 @@ void loop() {
     hour = minu / 60;
 
     alt = bmp.readAltitude();
-    
-	// Update stat
-	if(mem.alt_max < alt) mem.alt_max = alt;
-
     if (inits) {
         smooth = alt;
         old_alt = alt;
@@ -251,20 +256,60 @@ void loop() {
     }
 
     // Process Pressure
-    smooth = 0.99 * smooth + 0.01 * alt;
-	
+    smooth = 0.97 * smooth + 0.03* alt;
+	// Tau = 100
 	// Process Derivative
-    if ((old_usec - usec) >= 250) {
-        derivative = ((smooth - old_alt) * 1000) /
+    if ((old_usec - usec) >= 100) {
+        raw_deriv = ((smooth	- old_alt) * 1000) /
             (usec - old_usec);
         old_usec = usec;
         old_alt = smooth;
     }
+	derivative = 0.9 * derivative + 0.1 * raw_deriv;
 
-    // Update stat
-    if(mem.rate_max < derivative) mem.rate_max = derivative;
+	//if(abs(derivative) > 1.0){in_flight = true;}
+#ifdef PLOT	
+	dataFile = SD.open(filename, FILE_WRITE);
+	dataFile.print(usec);
+	dataFile.print(",");
+	dataFile.print(smooth);
+	dataFile.print(",");
+	dataFile.print(derivative);
+	dataFile.print(",");
+	dataFile.print(raw_deriv);
+	dataFile.print("\n");
+	dataFile.close();
+	if(in_flight){
+		// Update stat
+		if(mem.rate_max < derivative) mem.rate_max = derivative;
+		// Update stat
+		if(mem.alt_max < alt) mem.alt_max = alt;
+	}
+#endif
 
+	// TONE 
+#define ZERO_LEVEL 0.23
+            if (abs(derivative) >= ZERO_LEVEL) {
+                duration = (int) 100 + 50 / abs(derivative);
+            }
+            else {
+                duration = 0;
+            }
+            duration = constrain(duration, 0, 400);
+            freq = (int) (640 + 110 * derivative);
+            freq = constrain(freq, 40, 4000);
 
+            if (!tone_done) {
+                if (duration != 0)
+                    tone(2, freq, duration);
+                tone_done = true;
+                start_beep = millis();
+                old_duration = duration;
+            }
+            timer = start_beep + 2 * old_duration - millis();
+            if (timer < 10) {
+                tone_done = false;
+            }
     switch (count) {
         case 1 : // Print data on screen
             count_lcd ++;
@@ -285,80 +330,66 @@ void loop() {
                 if ((sec % 60) < 10) lcd.print("0");
                 lcd.print(sec % 60);
                 lcd.setCursor(55, 0);
-                lcd.print("~~~}");
-                lcd.setCursor(79, 0);
+
+				float battery = (float)analogRead(A1) * (5.0/1023.0);
+				if(battery >= 4.2) lcd.print("~~~}");
+				else if(battery >= 3.85) lcd.print(" ~~}");
+				else if(battery >= 3.80) lcd.print("  ~}");
+				else if(battery >= 3.70) lcd.print("   }");
+				else {set_sleep_mode(SLEEP_MODE_PWR_DOWN);}
+				lcd.setCursor(79, 0);
 
                 lcd.print((is_gps_valid==1)?"{":"X");
+				//lcd.setCursor(49,1);
+				//lcd.print((in_flight)?"Fling":"");
                 lcd.setCursor(20,4); 
-                if(derivative>0.0){
+                if(derivative>0.0){lcd.print("+");}
+				lcd.print(derivative);
+				lcd.print(" m/s");
 
-                    lcd.print("+");
-                }
-                lcd.print(derivative);
-
-
-                lcd.print(" m/s");
-
-                lcd.setCursor(0,5);
-                if(new_gpsD){
-                    lcd.print(cur_igc.time);
-                    new_gpsD = false;
-                }
-                lcd.print(mem.alt_max,0);
-                lcd.print("m|");
-
-                //lcd.print(mem.rate_max);
-                //lcd.print("m/s");
-                //lcd.drawColumn(1, map(derivative, 0, 45, 0, 8));  // ...clipped to the 0-45C range.
-                count_lcd = 0;
-            }
-            break;
-        case 2: // Write data to SD Card
-			count_sd ++;
-			if (count_sd == 5) { 
-				while (Serial.available() > 0) {
-					char ccc = Serial.read();
-					nmea_read(ccc);
-				}
+				lcd.setCursor(0,5);
 				if(new_gpsD){
-					dtostrf(smooth,5,0,cur_igc.pAlt);
-					if(smooth<10000.0){cur_igc.pAlt[0]='0';}
-					if(smooth<1000.0){cur_igc.pAlt[1]='0';}
-					if(smooth<100.0){cur_igc.pAlt[2]='0';}
-					if(smooth<10.0){cur_igc.pAlt[3]='0';}
-					dataFile = SD.open(filename, FILE_WRITE);
-					dataFile.println(cur_igc.raw);
-					dataFile.close();
+					//lcd.print(cur_igc.time);
+					new_gpsD = false;
 				}
-				count_sd = 0;
+				lcd.print(mem.alt_max,0);
+				lcd.print("m|");
+
+				lcd.print(mem.rate_max);
+				lcd.print("m/s");
+				count_lcd = 0;
+			}
+			break;
+		case 2: // Read GPS & Write data to SD Card
+			count_sd ++;
+			if (in_flight && count_sd == 5) {
+					while (Serial.available() > 0) {
+						char ccc = Serial.read();
+						nmea_read(ccc);
+					}
+					if(new_gpsD){
+						dtostrf(smooth,5,0,cur_igc.pAlt);
+						if(smooth<10000.0){cur_igc.pAlt[0]='0';}
+						if(smooth<1000.0){cur_igc.pAlt[1]='0';}
+						if(smooth<100.0){cur_igc.pAlt[2]='0';}
+						if(smooth<10.0){cur_igc.pAlt[3]='0';}
+#ifndef PLOT
+						dataFile = SD.open(filename, FILE_WRITE);
+						dataFile.println(cur_igc.raw);
+						dataFile.close();
+#endif
+					}
+					count_sd = 0;
 			}
             break;
-        case 3: // Make beep
-#define ZERO_LEVEL 0.23
-            if (abs(derivative) >= ZERO_LEVEL) {
-                duration = (int) 100 + 50 / abs(derivative);
-            }
-            else {
-                duration = 0;
-            }
-            duration = constrain(duration, 0, 400);
-            freq = (int) (640 + 100 * derivative);
-            freq = constrain(freq, 40, 4000);
-
-            if (!tone_done) {
-                if (duration != 0)
-                    tone(2, freq, duration);
-                tone_done = true;
-                start_beep = millis();
-                old_duration = duration;
-            }
-            timer = start_beep + 2 * old_duration - millis();
-            if (timer < 10) {
-                tone_done = false;
-            }
-            break;
-        case 4 : 
-            write_EEPROM();
+        case 3 :
+			if(in_flight){	
+				if(minu >= old_minu+10){
+					mem.minutes+= (minu-old_minu);
+					old_minu = minu;
+				}
+				write_EEPROM(STAT_GLOBAL);
+			}
             count = 0;
             break;
 
