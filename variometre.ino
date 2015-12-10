@@ -162,6 +162,44 @@ void nmea_read(char c){
     }
 index++;
 }
+typedef struct{
+	const char text[10];
+	char value;
+	void (* funct)();
+}t_item;
+
+typedef struct{
+	const char title[15];
+	t_item[4];
+	char index;
+}t_page;
+
+void do_menu(){
+	t_page cur_page; // Page to screen
+	char button = 0x00;
+	char level; // 0, 1 or 2
+	bool exit_menu = false;
+	while(!exit_menu){
+		display(page,level); // page with highlight level
+		switch(Read_button()){
+			case CHANGE_LEVEL_p :
+				if(level < 0X02) level ++;
+				else level = 0x00;
+				break;
+			case ENTER :
+				if(level == page){cur_page=page[++i];}
+				if(level == item){cur_page = index++;}
+				if(level == value){cur_page.item[cur_page.index].funct();}
+				break;
+			case EXIT :
+				exit_menu = true;
+				break;
+			case Default:
+				break;
+		}
+	}
+}
+
 void setup() {
     memset(&cur_igc,0,sizeof(cur_igc));
     cur_igc.a = 'A';
@@ -189,7 +227,8 @@ void setup() {
 	pinMode(A0, OUTPUT);// Backlight
 	pinMode(2, OUTPUT);// Tone
 	pinMode(A1, OUTPUT);// Voltage
-   	analogWrite(A0,0x00);	
+   	analogWrite(A0,0x00);
+	pinMode(PUSH_SET,INPUT);// SET Button
 
 
     // see if the card is present and can be initialized:
@@ -240,6 +279,11 @@ void loop() {
 
     char heure[8];
 
+	if(digitalRead(PUSH_SET)==HIGH){
+		delay(1);
+		while(digitalRead(PUSH_SET)==HIGH);
+		do_menu();
+	}
 
     // Update Time
     usec = millis();
