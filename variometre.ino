@@ -75,7 +75,7 @@ bool new_gpsD = false;
 //const char test[] ="$GPGGA,064036.289,,,,,1,04,3.2,200.2,M,,,,0000*0E";
 
 void nmea_read(char c){
-	static char buf[70]={0};
+	static char buf[100]={0};
 	static uint8_t field=0;
 	static uint8_t index=0;
 	static uint8_t i = 0;
@@ -106,6 +106,10 @@ void nmea_read(char c){
 					for(i=0;i<6;i++)
 						cur_igc.time[i] = buf[index-(10-i)];
 				}
+				else{
+					index = 0;
+					field = 0;
+				}
 				break;
 			case 3:// Fill LAT
 				if(buf[index-1]!=','){
@@ -115,9 +119,17 @@ void nmea_read(char c){
 						cur_igc.lat[i] = buf[index-(9-i+offset)];
 					}
 				}
+				else{
+					index = 0;
+					field = 0;
+				}
 			case 4:
 				if(buf[index-1]!=','){
 					cur_igc.lat[7] = buf[index-1];
+				}
+				else{
+					index = 0;
+					field = 0;
 				}
 				break;
 			case 5:// Fill LON
@@ -128,30 +140,61 @@ void nmea_read(char c){
 						cur_igc.lng[i] = buf[index-(10-i+offset)];
 					}
 				}
+				else{
+					index = 0;
+					field = 0;
+				}
 			case 6:
 				if(buf[index-1]!=','){
 					cur_igc.lng[8] = buf[index-1];
+				}
+				else{
+					index = 0;
+					field = 0;
 				}
 				break;
 			case 7:
 				if(buf[index-1]!=','){
 					is_gps_valid = buf[index-1];
 				}
+				else{
+					index = 0;
+					field = 0;
+				}
 				break;
 			case 9: // Save beginning of alt
 				if(buf[index-1]!=','){
 					start_alt = index+1;
 				}
+				else{
+					index = 0;
+					field = 0;
+				}
 				break;
 			case 10:
-				if(buf[index-1]!=','){
+				if(buf[index-1]!=','&&buf[index-1]<='9'&&buf[index-1]=>'0'){
 					j = start_alt;
-					while(buf[j]!='.')
+					while((buf[j]!='.')||(j-start_alt<6))// Find int part of alt
 						j++;
-					for(i=0;i<(j-start_alt);i++){
-						cur_igc.pAlt[(5-(j-start_alt))+i]=
-							buf[j-((j-start_alt)-i)];
+					if((j-start_alt)>=6){// End of alt not found
+						index = 0;
+						field = 0;
+						break;
 					}
+					for(i=0;i<(j-start_alt);i++){
+						if(((5-(j-start_alt)+i)<5)&&((5-(j-start_alt)+i)>=0)&&
+						(buf[j-((j-start_alt)-i)]<='9')&&
+						buf[j-((j-start_alt)-i)]>='0')){
+						// Alt have to enter in 5 char
+							cur_igc.pAlt[(5-(j-start_alt))+i]=
+								buf[j-((j-start_alt)-i)];
+						}
+						else{ break;}
+					}
+				}
+				else{
+					index = 0;
+					field = 0;
 				}
 				break;
 
@@ -164,7 +207,7 @@ void nmea_read(char c){
 	index++;
 }
 void setup() {
-	memset(&cur_igc,0,sizeof(cur_igc));
+	memset(&cur_igc,'0',sizeof(cur_igc));
 	cur_igc.a = 'A';
 	cur_igc.b = 'B';
 
