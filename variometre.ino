@@ -172,7 +172,7 @@ void nmea_read(char c){
 				}
 				break;
 			case 10:
-				if(buf[index-1]!=','&&buf[index-1]<='9'&&buf[index-1]=>'0'){
+				if(buf[index-1]!=','&&buf[index-1]<='9'&&buf[index-1]>='0'){
 					j = start_alt;
 					while((buf[j]!='.')||(j-start_alt<6))// Find int part of alt
 						j++;
@@ -184,7 +184,7 @@ void nmea_read(char c){
 					for(i=0;i<(j-start_alt);i++){
 						if(((5-(j-start_alt)+i)<5)&&((5-(j-start_alt)+i)>=0)&&
 						(buf[j-((j-start_alt)-i)]<='9')&&
-						buf[j-((j-start_alt)-i)]>='0')){
+						buf[j-((j-start_alt)-i)]>='0'){
 						// Alt have to enter in 5 char
 							cur_igc.pAlt[(5-(j-start_alt))+i]=
 								buf[j-((j-start_alt)-i)];
