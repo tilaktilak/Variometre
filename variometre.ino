@@ -6,7 +6,8 @@
 #include <SD.h>
 #include <PCD8544.h>
 #include <EEPROM.h>
-
+#include <TinyGPS++.h>
+TinyGPSPlus gps;
 #define SIZE_MEM  13
 
 typedef union __attribute__((__packed__)){
@@ -68,144 +69,11 @@ typedef union __attribute__((__packed__)){
 igc_t cur_igc;
 
 char is_gps_valid = 'E';
-bool new_gpsD = false;
 //char test[] ="$GPRMC,220516,A,5133.82,N,00042.24\
 //,W,173.8,231.8,130694,004.2,W*70";
 //const char test[] ="$GPGGA,064036.289,4836.5375,N,00740.9373,E,1,04,3.2,200.2,M,,,,0000*0E";
 //const char test[] ="$GPGGA,064036.289,,,,,1,04,3.2,200.2,M,,,,0000*0E";
 
-void nmea_read(char c){
-	static char buf[100]={0};
-	static uint8_t field=0;
-	static uint8_t index=0;
-	static uint8_t i = 0;
-	static uint8_t j = 0;
-	static uint8_t start_alt = 0;
-	buf[index] = c;
-	if(c=='$'){
-		index = 0;
-		field = 0;
-	}
-	if(c==','){
-		field++;
-		uint8_t i;
-		int8_t offset = 0;
-		switch(field){
-			case 1:
-				if(buf[1]=='G'&&buf[2]=='P'&&buf[3]=='G'
-						&&buf[4]=='G'&&buf[5]=='A'){
-					// New packet to parse
-				}
-				else{
-					index = 0;
-					field = 0;
-				}
-				break;
-			case 2:
-				if(buf[index-1]!=','){
-					for(i=0;i<6;i++)
-						cur_igc.time[i] = buf[index-(10-i)];
-				}
-				else{
-					index = 0;
-					field = 0;
-				}
-				break;
-			case 3:// Fill LAT
-				if(buf[index-1]!=','){
-					offset = 0;
-					for(i=0;i<7;i++){
-						if(buf[index-(9-i)]=='.') offset = -1;
-						cur_igc.lat[i] = buf[index-(9-i+offset)];
-					}
-				}
-				else{
-					index = 0;
-					field = 0;
-				}
-			case 4:
-				if(buf[index-1]!=','){
-					cur_igc.lat[7] = buf[index-1];
-				}
-				else{
-					index = 0;
-					field = 0;
-				}
-				break;
-			case 5:// Fill LON
-				if(buf[index-1]!=','){
-					offset = 0;
-					for(i=0;i<8;i++){
-						if(buf[index-(10-i)]=='.') offset = -1;
-						cur_igc.lng[i] = buf[index-(10-i+offset)];
-					}
-				}
-				else{
-					index = 0;
-					field = 0;
-				}
-			case 6:
-				if(buf[index-1]!=','){
-					cur_igc.lng[8] = buf[index-1];
-				}
-				else{
-					index = 0;
-					field = 0;
-				}
-				break;
-			case 7:
-				if(buf[index-1]!=','){
-					is_gps_valid = buf[index-1];
-				}
-				else{
-					index = 0;
-					field = 0;
-				}
-				break;
-			case 9: // Save beginning of alt
-				if(buf[index-1]!=','){
-					start_alt = index+1;
-				}
-				else{
-					index = 0;
-					field = 0;
-				}
-				break;
-			case 10:
-				if(buf[index-1]!=','&&buf[index-1]<='9'&&buf[index-1]>='0'){
-					j = start_alt;
-					while((buf[j]!='.')||(j-start_alt<6))// Find int part of alt
-						j++;
-					if((j-start_alt)>=6){// End of alt not found
-						index = 0;
-						field = 0;
-						break;
-					}
-					for(i=0;i<(j-start_alt);i++){
-						if(((5-(j-start_alt)+i)<5)&&((5-(j-start_alt)+i)>=0)&&
-						(buf[j-((j-start_alt)-i)]<='9')&&
-						buf[j-((j-start_alt)-i)]>='0'){
-						// Alt have to enter in 5 char
-							cur_igc.pAlt[(5-(j-start_alt))+i]=
-								buf[j-((j-start_alt)-i)];
-						}
-						else{ break;}
-					}
-				}
-				else{
-					index = 0;
-					field = 0;
-				}
-				break;
-
-			case 11:
-				new_gpsD = true;
-				field = 0;
-				break;
-		}
-	}
-	index++;
-}
 void setup() {
 	memset(&cur_igc,'0',sizeof(cur_igc));
 	cur_igc.a = 'A';
@@ -383,7 +251,7 @@ void loop() {
 				else {set_sleep_mode(SLEEP_MODE_PWR_DOWN);}
 				lcd.setCursor(79, 0);
 
-				lcd.print((is_gps_valid==1)?"{":"X");
+				lcd.print((gps.location.isValid())?"{":"X");
 				//lcd.setCursor(49,1);
 				//lcd.print((in_flight)?"Fling":"");
 				lcd.setCursor(20,4); 
@@ -392,10 +260,6 @@ void loop() {
 				lcd.print(" m/s");
 
 				lcd.setCursor(0,5);
-				if(new_gpsD){
-					//lcd.print(cur_igc.time);
-					new_gpsD = false;
-				}
 				lcd.print(mem.alt_max,0);
 				lcd.print("m|");
 
@@ -407,41 +271,56 @@ void loop() {
 		case 2: // Read GPS & Write data to SD Card
 			count_sd ++;
 			if (in_flight && count_sd == 5) {
-				while (Serial.available() > 0) {
-					char ccc = Serial.read();
-					nmea_read(ccc);
-				}
-				if(new_gpsD){
-					if(cur_igc.time[0] != 0 &&
-							cur_igc.lat[0] != 0 &&
-							cur_igc.lng[0] != 0){
-						dtostrf(smooth,5,0,cur_igc.pAlt);
-						if(smooth<10000.0){cur_igc.pAlt[0]='0';}
-						if(smooth<1000.0){cur_igc.pAlt[1]='0';}
-						if(smooth<100.0){cur_igc.pAlt[2]='0';}
-						if(smooth<10.0){cur_igc.pAlt[3]='0';}
-#ifndef PLOT
-						dataFile = SD.open(filename, FILE_WRITE);
-						dataFile.println(cur_igc.raw);
-						dataFile.close();
-#endif
-					}
+				dataFile = SD.open(filename , FILE_WRITE);
+				if (dataFile) {
+					dataFile.print("B");
+					if (gps.time.hour() < 10) dataFile.print(F("0"));
+					dataFile.print(gps.time.hour());
+
+					if (gps.time.minute() < 10) dataFile.print(F("0"));
+					dataFile.print(gps.time.minute());
+					if (gps.time.second() < 10) dataFile.print(F("0"));
+					dataFile.print(gps.time.second());
+
+					if((gps.location.lat())<10.0) dataFile.print(F("0"));
+					dataFile.print(gps.location.lat()*100000,0);
+					dataFile.print("N");
+					if((gps.location.lng())<10.0) dataFile.print(F("00"));
+					else if((gps.location.lng())<100.0) dataFile.print(F("0"));
+					dataFile.print(gps.location.lng()*100000,0);
+					dataFile.print("WA");
+					if(smooth<10)dataFile.print("0000");
+					else if(smooth<100) dataFile.print("000");
+					else if(smooth<1000) dataFile.print("00");
+					else if(smooth<10000) dataFile.print("0");
+					dataFile.print(smooth,0);
+
+					if(smooth<10)dataFile.print("0000");
+					else if(smooth<100) dataFile.print("000");
+					else if(smooth<1000) dataFile.print("00");
+					else if(smooth<10000) dataFile.print("0");
+					dataFile.println(gps.altitude.meters(),0);
+
+					dataFile.close();
 				}
 				count_sd = 0;
 			}
-			break;
-		case 3 :
-			if(in_flight){	
-				if(minu >= old_minu+10){
-					mem.minutes+= (minu-old_minu);
-					old_minu = minu;
-				}
+				break;
+			case 3 :
+				if(in_flight){	
+					if(minu >= old_minu+10){
+						mem.minutes+= (minu-old_minu);
+						old_minu = minu;
+					}
 				write_EEPROM(STAT_GLOBAL);
+			}
+			break;
+		case 4 : 
+			while (Serial.available() > 0) {
+				gps.encode(Serial.read());
 			}
 			count = 0;
 			break;
-
-
 		default:
 			break;
 	}
