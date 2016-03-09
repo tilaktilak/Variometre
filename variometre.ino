@@ -171,12 +171,11 @@ void loop() {
 	smooth = 0.97 * smooth + 0.03* alt;
 	// Tau = 100
 	// Process Derivative
-	if ((old_usec - usec) >= 100) {
-		raw_deriv = ((smooth	- old_alt) * 1000) /
-			(usec - old_usec);
-		old_usec = usec;
-		old_alt = smooth;
-	}
+        if ((old_usec - usec) >= 100) {
+            raw_deriv = ((smooth    - old_alt) * 1000) /(usec - old_usec);
+            old_usec = usec;
+            old_alt = smooth;
+        }
 	derivative = 0.9 * derivative + 0.1 * raw_deriv;
 
 	//if(abs(derivative) > 1.0){in_flight = true;}
@@ -270,7 +269,7 @@ void loop() {
 			break;
 		case 2: // Read GPS & Write data to SD Card
 			count_sd ++;
-			if (in_flight && count_sd == 5) {
+			if (in_flight && count_sd == 5 && gps.location.isValid()) {
 				dataFile = SD.open(filename , FILE_WRITE);
 				if (dataFile) {
 					dataFile.print("B");
@@ -282,12 +281,14 @@ void loop() {
 					if (gps.time.second() < 10) dataFile.print(F("0"));
 					dataFile.print(gps.time.second());
 
-					if((gps.location.lat())<10.0) dataFile.print(F("0"));
-					dataFile.print(gps.location.lat()*100000,0);
+					//if((gps.location.lat())<10.0) dataFile.print(F("0"));
+					//dataFile.print(gps.location.lat()*100000,0);
+					dataFile.print(gps.c_lat);
 					dataFile.print("N");
-					if((gps.location.lng())<10.0) dataFile.print(F("00"));
-					else if((gps.location.lng())<100.0) dataFile.print(F("0"));
-					dataFile.print(gps.location.lng()*100000,0);
+					//if((gps.location.lng())<10.0) dataFile.print(F("00"));
+					//else if((gps.location.lng())<100.0) dataFile.print(F("0"));
+					//dataFile.print(gps.location.lng()*100000,0);
+					dataFile.print(gps.c_lon);
 					dataFile.print("WA");
 					if(smooth<10)dataFile.print("0000");
 					else if(smooth<100) dataFile.print("000");
