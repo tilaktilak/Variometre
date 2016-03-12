@@ -284,12 +284,14 @@ void loop() {
 					//if((gps.location.lat())<10.0) dataFile.print(F("0"));
 					//dataFile.print(gps.location.lat()*100000,0);
 					dataFile.print(gps.c_lat);
-					dataFile.print("N");
+					dataFile.print(gps.dir_lat);
+                                        //dataFile.print("N");
 					//if((gps.location.lng())<10.0) dataFile.print(F("00"));
 					//else if((gps.location.lng())<100.0) dataFile.print(F("0"));
 					//dataFile.print(gps.location.lng()*100000,0);
 					dataFile.print(gps.c_lon);
-					dataFile.print("WA");
+                                        dataFile.print(gps.dir_lon);
+					dataFile.print("A");
 					if(smooth<10)dataFile.print("0000");
 					else if(smooth<100) dataFile.print("000");
 					else if(smooth<1000) dataFile.print("00");
