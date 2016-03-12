@@ -201,13 +201,15 @@ void loop() {
 	// TONE 
 #define ZERO_LEVEL 0.23
 	if (abs(derivative) >= ZERO_LEVEL) {
-		duration = (int) 100 + 50 / abs(derivative);
+		if(derivative>0){duration = (int) 50 + 70 / abs(derivative);}
+                else{duration = (int) 100 + 200 / abs(derivative);}
 	}
 	else {
 		duration = 0;
 	}
 	duration = constrain(duration, 0, 400);
-	freq = (int) (640 + 110 * derivative);
+	freq = (int) (640 + 200 * derivative);
+        if(derivative<0)freq-=250;
 	freq = constrain(freq, 40, 4000);
 
 	if (!tone_done) {
@@ -247,7 +249,15 @@ void loop() {
 				else if(battery >= 3.85) lcd.print(" ~~}");
 				else if(battery >= 3.80) lcd.print("  ~}");
 				else if(battery >= 3.70) lcd.print("   }");
-				else {set_sleep_mode(SLEEP_MODE_PWR_DOWN);}
+				else {
+                                    lcd.print(battery);
+                                    dataFile.close();
+                                    lcd.clear();
+                                    set_sleep_mode(SLEEP_MODE_PWR_DOWN);
+                                    cli();
+                                    sleep_enable();
+                                    sleep_bod_disable();
+                                    sei();}
 				lcd.setCursor(79, 0);
 
 				lcd.print((gps.location.isValid())?"{":"X");
@@ -315,7 +325,7 @@ void loop() {
 						mem.minutes+= (minu-old_minu);
 						old_minu = minu;
 					}
-				write_EEPROM(STAT_GLOBAL);
+				//write_EEPROM(STAT_GLOBAL);
 			}
 			break;
 		case 4 : 
