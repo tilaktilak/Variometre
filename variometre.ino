@@ -249,11 +249,11 @@ void loop() {
 				lcd.print(sec % 60);
 				lcd.setCursor(55, 0);
 
-				float battery = (float)analogRead(A1) * (5.0/1023.0);
+				float battery = (float)analogRead(A1) * (5.0/1023.0) - 0.24;
 				if(battery >= 4.2) lcd.print("~~~}");
-				else if(battery >= 3.85) lcd.print(" ~~}");
-				else if(battery >= 3.80) lcd.print("  ~}");
-				else if(battery >= 3.70) lcd.print("   }");
+				else if(battery >= 3.80) lcd.print(" ~~}");
+				else if(battery >= 3.70) lcd.print("  ~}");
+				else if(battery >= 3.60) lcd.print("   }");
 				else {
                                     lcd.print(battery);
                                     dataFile.close();
