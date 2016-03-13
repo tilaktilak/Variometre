@@ -10,6 +10,9 @@
 TinyGPSPlus gps;
 #define SIZE_MEM  13
 
+
+//#define NO_TONE
+
 typedef union __attribute__((__packed__)){
 	struct __attribute__((__packed__)){
 		uint8_t index;
@@ -214,8 +217,10 @@ void loop() {
 
 	if (!tone_done) {
 		if (duration != 0)
+#ifndef NO_TONE
 			tone(2, freq, duration);
-		tone_done = true;
+#endif
+                tone_done = true;
 		start_beep = millis();
 		old_duration = duration;
 	}
@@ -257,7 +262,9 @@ void loop() {
                                     cli();
                                     sleep_enable();
                                     sleep_bod_disable();
-                                    sei();}
+                                    sei();
+                                    sleep_mode();
+                                    }
 				lcd.setCursor(79, 0);
 
 				lcd.print((gps.location.isValid())?"{":"X");
@@ -268,56 +275,63 @@ void loop() {
 				lcd.print(derivative);
 				lcd.print(" m/s");
 
-				lcd.setCursor(0,5);
-				lcd.print(mem.alt_max,0);
-				lcd.print("m|");
+                                lcd.setCursor(0,5);
+                                lcd.print(mem.alt_max,0);
+                                lcd.print("m|");
 
-				lcd.print(mem.rate_max);
-				lcd.print("m/s");
-				count_lcd = 0;
-			}
-			break;
-		case 2: // Read GPS & Write data to SD Card
-			count_sd ++;
-			if (in_flight && count_sd == 5 && gps.location.isValid()) {
-				dataFile = SD.open(filename , FILE_WRITE);
-				if (dataFile) {
-					dataFile.print("B");
-					if (gps.time.hour() < 10) dataFile.print(F("0"));
-					dataFile.print(gps.time.hour());
+                                lcd.print(mem.rate_max);
+                                lcd.print("m/s");
+                                count_lcd = 0;
+                        }
+                        break;
+                case 2: // Read GPS & Write data to SD Card
+                        count_sd ++;
+                        if (in_flight && count_sd == 5 && gps.location.isValid()) {
+                            if((strlen(gps.c_lon)>=sizeof(gps.c_lon-1))&&(strlen(gps.c_lat)>=sizeof(gps.c_lat-1))){
+                                dataFile = SD.open(filename , FILE_WRITE);
+                                if (dataFile) {
+                                    dataFile.print("B");
+                                    if (gps.time.hour() < 10) dataFile.print(F("0"));
+                                    dataFile.print(gps.time.hour());
 
-					if (gps.time.minute() < 10) dataFile.print(F("0"));
-					dataFile.print(gps.time.minute());
-					if (gps.time.second() < 10) dataFile.print(F("0"));
-					dataFile.print(gps.time.second());
+                                    if (gps.time.minute() < 10) dataFile.print(F("0"));
+                                    dataFile.print(gps.time.minute());
+                                    if (gps.time.second() < 10) dataFile.print(F("0"));
+                                    dataFile.print(gps.time.second());
 
-					//if((gps.location.lat())<10.0) dataFile.print(F("0"));
-					//dataFile.print(gps.location.lat()*100000,0);
-					dataFile.print(gps.c_lat);
-					dataFile.print(gps.dir_lat);
-                                        //dataFile.print("N");
-					//if((gps.location.lng())<10.0) dataFile.print(F("00"));
-					//else if((gps.location.lng())<100.0) dataFile.print(F("0"));
-					//dataFile.print(gps.location.lng()*100000,0);
-					dataFile.print(gps.c_lon);
-                                        dataFile.print(gps.dir_lon);
-					dataFile.print("A");
-					if(smooth<10)dataFile.print("0000");
-					else if(smooth<100) dataFile.print("000");
-					else if(smooth<1000) dataFile.print("00");
-					else if(smooth<10000) dataFile.print("0");
-					dataFile.print(smooth,0);
+                                    //if((gps.location.lat())<10.0) dataFile.print(F("0"));
+                                    //dataFile.print(gps.location.lat()*100000,0);
+                                    dataFile.print(gps.c_lat);
+                                    dataFile.print(gps.dir_lat);
+                                    //dataFile.print("N");
+                                    //if((gps.location.lng())<10.0) dataFile.print(F("00"));
+                                    //else if((gps.location.lng())<100.0) dataFile.print(F("0"));
+                                    //dataFile.print(gps.location.lng()*100000,0);
+                                    dataFile.print(gps.c_lon);
+                                    dataFile.print(gps.dir_lon);
+                                    dataFile.print("A");
+                                    if(smooth<10)dataFile.print("0000");
+                                    else if(smooth<100) dataFile.print("000");
+                                    else if(smooth<1000) dataFile.print("00");
+                                    else if(smooth<10000) dataFile.print("0");
+                                    dataFile.print(smooth,0);
 
-					if(smooth<10)dataFile.print("0000");
-					else if(smooth<100) dataFile.print("000");
-					else if(smooth<1000) dataFile.print("00");
-					else if(smooth<10000) dataFile.print("0");
-					dataFile.println(gps.altitude.meters(),0);
+                                    if(smooth<10)dataFile.print("0000");
+                                    else if(smooth<100) dataFile.print("000");
+                                    else if(smooth<1000) dataFile.print("00");
+                                    else if(smooth<10000) dataFile.print("0");
+                                    dataFile.println(gps.altitude.meters(),0);
 
-					dataFile.close();
-				}
-				count_sd = 0;
-			}
+                                    /*dataFile.println("____");
+                                    dataFile.println(strlen(gps.c_lon));
+                                    dataFile.println("____");
+                                    dataFile.println(sizeof(gps.c_lon));
+                                    */
+                                    dataFile.close();
+                               }
+                            }
+                            count_sd = 0;
+                        }
 				break;
 			case 3 :
 				if(in_flight){	
@@ -325,7 +339,7 @@ void loop() {
 						mem.minutes+= (minu-old_minu);
 						old_minu = minu;
 					}
-				//write_EEPROM(STAT_GLOBAL);
+				write_EEPROM(STAT_GLOBAL);
 			}
 			break;
 		case 4 : 
