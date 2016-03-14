@@ -287,7 +287,11 @@ void loop() {
                 case 2: // Read GPS & Write data to SD Card
                         count_sd ++;
                         if (in_flight && count_sd == 5 && gps.location.isValid()) {
-                            if((strlen(gps.c_lon)>=sizeof(gps.c_lon-1))&&(strlen(gps.c_lat)>=sizeof(gps.c_lat-1))){
+                            if((strlen(gps.c_lon)==8)&&
+                                    (strlen(gps.c_lat)==7)&&
+                                    (gps.dir_lat=='N'||gps.dir_lat=='S')&&
+                                    (gps.dir_lon=='W'||gps.dir_lon=='E')&&
+                                    !(gps.time.hour()==0&&gps.time.minute()==0&&gps.time.second()==0)){
                                 dataFile = SD.open(filename , FILE_WRITE);
                                 if (dataFile) {
                                     dataFile.print("B");
@@ -322,11 +326,6 @@ void loop() {
                                     else if(smooth<10000) dataFile.print("0");
                                     dataFile.println(gps.altitude.meters(),0);
 
-                                    /*dataFile.println("____");
-                                    dataFile.println(strlen(gps.c_lon));
-                                    dataFile.println("____");
-                                    dataFile.println(sizeof(gps.c_lon));
-                                    */
                                     dataFile.close();
                                }
                             }
