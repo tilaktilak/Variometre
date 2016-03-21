@@ -123,7 +123,7 @@ void setup() {
         while (1) {}
     }
     //dataFile = SD.open(filename, FILE_WRITE);
-    if(!dataFile.open(filename,O_RDWR | O_APPEND | O_CREAT)){
+    if(!dataFile.open(filename,O_RDWR | O_CREAT | O_TRUNC)){
         lcd.print(F("FILE ERR"));
         lcd.setCursor(0, 5);
         lcd.print(filename);
@@ -292,7 +292,7 @@ void loop() {
             break;
         case 2: // Read GPS & Write data to SD Card
             count_sd ++;
-            if (in_flight && count_sd == 5 && gps.location.isValid()) {
+            if (in_flight && count_sd == 10 && gps.location.isValid()) {
                 if((strlen(gps.c_lon)==8)&&
                         (strlen(gps.c_lat)==7)&&
                         (gps.dir_lat=='N'||gps.dir_lat=='S')&&
@@ -344,7 +344,7 @@ void loop() {
             }
             break;
         case 3 :
-            if(in_flight){	
+            if(in_flight){
                 if(minu >= old_minu+10){
                     mem.minutes+= (minu-old_minu);
                     old_minu = minu;
