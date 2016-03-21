@@ -87,7 +87,7 @@ void setup() {
 	mem.alt_max = 0.0f;
 	mem.rate_max = 0.0f;
 	mem.minutes = 0;
-	// Fetch stats in memory 
+	// Fetch stats in memory
 	Serial.begin(9600);
 
 	read_EEPROM(STAT_GLOBAL);
@@ -103,7 +103,7 @@ void setup() {
 
 	pinMode(A0, OUTPUT);// Backlight
 	pinMode(2, OUTPUT);// Tone
-	pinMode(A1, OUTPUT);// Voltage
+        pinMode(A1, OUTPUT);// Voltage
 	analogWrite(A0,0x00);	
 
 
@@ -233,9 +233,6 @@ void loop() {
 			count_lcd ++;
 			if (count_lcd == 5) {
 
-				lcd.setCursor(0, 2);
-				lcd.print(smooth);
-				lcd.print(" m");
 
 				lcd.setCursor(0, 0);
 
@@ -255,6 +252,7 @@ void loop() {
 				else if(battery >= 3.70) lcd.print("  ~}");
 				else if(battery >= 3.60) lcd.print("   }");
 				else {
+                                    // Got into sleep mode
                                     lcd.print(battery);
                                     dataFile.close();
                                     lcd.clear();
@@ -268,19 +266,28 @@ void loop() {
 				lcd.setCursor(79, 0);
 
 				lcd.print((gps.location.isValid())?"{":"X");
+
+                                lcd.setCursor(0, 1);
+                                lcd.set_size(0x02);
+				lcd.print(smooth);
+                                lcd.set_size(0x01);
+				lcd.print("m");
 				//lcd.setCursor(49,1);
 				//lcd.print((in_flight)?"Fling":"");
-				lcd.setCursor(20,4); 
+                                lcd.set_size(0x02);
+				lcd.setCursor(0,4); 
 				if(derivative>0.0){lcd.print("+");}
 				lcd.print(derivative);
-				lcd.print(" m/s");
-
+                                lcd.set_size(0x01);
+				lcd.print("m/s");
+/*
                                 lcd.setCursor(0,5);
                                 lcd.print(mem.alt_max,0);
                                 lcd.print("m|");
 
                                 lcd.print(mem.rate_max);
                                 lcd.print("m/s");
+                                */
                                 count_lcd = 0;
                         }
                         break;
