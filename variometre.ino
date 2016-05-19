@@ -263,10 +263,16 @@ void do_menu(){
 #endif
 
         // TONE
-#define ZERO_LEVEL 0.23
-        if (abs(derivative) >= ZERO_LEVEL) {
-            if(derivative>0){duration = (int) 50 + 70 / abs(derivative);}
-            else{duration = (int) 100 + 200 / abs(derivative);}
+#define RISING_LEVEL 0.23
+#define FALLING_LEVEL 0.4
+#define PERIOD_MAX 400
+        if (derivative >= RISING_LEVEL) {
+                //duration = (int) 50 + 70 / abs(derivative);
+                duration = (int) ((-derivative)*70 + 400);
+        }
+        else if(derivative <= -FALLING_LEVEL){
+                //duration = (int) 100 + 200 / abs(derivative);
+                duration = (int) ((derivative)*35 +  400);
         }
         else {
             duration = 0;
