@@ -14,7 +14,7 @@ TinyGPSPlus gps;
 #define     ENTER           2
 #define     EXIT            3
 
-//#define PLOT
+#define PLOT
 //#define NO_TONE
 
 typedef union __attribute__((__packed__)){
@@ -173,11 +173,11 @@ void do_menu(){
             lcd.print(filename);
             while (1);
         }
-       /*while (Serial.available() > 0) {
-            dataFile.print(Serial.read());
-            dataFile.sync();
-            dataFile.getWriteError();
-        }*/
+        /*while (Serial.available() > 0) {
+          dataFile.print(Serial.read());
+          dataFile.sync();
+          dataFile.getWriteError();
+          }*/
         // Initialize battery voltage measure
         batt += (float)analogRead(A1) * (5.0/1023.0) - 0.24;
     }
@@ -207,6 +207,7 @@ void do_menu(){
         static uint8_t count_gps = 0;
         static float avg_batt;
         static uint8_t avg_batt_count = 0;
+        static float ground_speed = 0.0f;
 
         char heure[8];
 #if 0
@@ -267,12 +268,12 @@ void do_menu(){
 #define FALLING_LEVEL 0.4
 #define PERIOD_MAX 400
         if (derivative >= RISING_LEVEL) {
-                //duration = (int) 50 + 70 / abs(derivative);
-                duration = (int) ((-derivative)*70 + 400);
+            //duration = (int) 50 + 70 / abs(derivative);
+            duration = (int) ((-derivative)*70 + 400);
         }
         else if(derivative <= -FALLING_LEVEL){
-                //duration = (int) 100 + 200 / abs(derivative);
-                duration = (int) ((derivative)*35 +  400);
+            //duration = (int) 100 + 200 / abs(derivative);
+            duration = (int) ((derivative)*35 +  400);
         }
         else {
             duration = 0;
@@ -365,10 +366,10 @@ void do_menu(){
                     lcd.set_size(0x01);
                     lcd.print("m");
                     // Print Vx
-                    if(gps.location.isValid()){
+                    if(ground_speed >= 0.0f){
                         lcd.setCursor(0,3);
                         lcd.print("Vx :");
-                        lcd.print(gps.speed.value());
+                        lcd.print(ground_speed);
                         lcd.print(" km/h");
                     }
                     lcd.set_size(0x02);
@@ -381,13 +382,14 @@ void do_menu(){
                 }
                 break;
             case 2: // Read GPS & Write data to SD Card
-                count_sd ++;
-                if (in_flight && count_sd == 10 && gps.location.isValid()) {
-                   if((strlen(gps.c_lon)==8)&&
+                //count_sd ++;
+                if (in_flight  && gps.location.isValid()) {
+                    if((strlen(gps.c_lon)==8)&&
                             (strlen(gps.c_lat)==7)&&
                             (gps.dir_lat=='N'||gps.dir_lat=='S')&&
                             (gps.dir_lon=='W'||gps.dir_lon=='E')&&
                             !(gps.time.hour()==0&&gps.time.minute()==0&&gps.time.second()==0)){
+                        ground_speed = gps.speed.kmph();
 
                         dataFile.print("B");
                         if (gps.time.hour() < 10) dataFile.print(F("0"));
@@ -429,15 +431,20 @@ void do_menu(){
                     }
                     write_EEPROM(STAT_GLOBAL);
                 }
-                break;
-            case 4 :
-                while (Serial.available() > 0) {
-                    gps.encode(Serial.read());
-                }
                 count = 0;
                 break;
-            default:
+            /*case 4 :
+                count = 0;
+                break;
+           */ 
+           default:
                 break;
         }
         count++;
     }
+    
+void serialEvent(){
+    while (Serial.available() > 0) {
+        gps.encode(Serial.read());
+    }
+}
