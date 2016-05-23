@@ -173,11 +173,26 @@ void do_menu(){
             lcd.print(filename);
             while (1);
         }
-        /*while (Serial.available() > 0) {
-          dataFile.print(Serial.read());
-          dataFile.sync();
-          dataFile.getWriteError();
-          }*/
+        
+        dataFile.print(F("AXXX Tilak_Logger\r\
+HFDTE020911\r\
+HFFXA035\r\
+HFPLTPILOTINCHARGE: Pierre-Louis TILAK\r\
+HFCM2CREW2: not recorded\r\
+HFGTYGLIDERTYPE:Advance Alpha5 23\r\
+HFGIDGLIDERID:0\r\
+HFDTM100GPSDATUM: WGS-1984\r\
+HFRFWFIRMWAREVERSION: 1.2\r\
+HFRHWHARDWAREVERSION: 2016\r\
+HFFTYFRTYPE: Ardiuno Tilak Logger\r\
+HFGPSGPS:Ublox Neo6m\r\
+HFPRSPRESSALTSENSOR: BMP180\r\
+HFCIDCOMPETITIONID:\r\
+HFCCLCOMPETITIONCLASS:\r"));
+        // Flush data
+        dataFile.sync();
+        dataFile.getWriteError();
+
         // Initialize battery voltage measure
         batt += (float)analogRead(A1) * (5.0/1023.0) - 0.24;
     }
@@ -362,16 +377,14 @@ void do_menu(){
 
                     lcd.setCursor(0, 1);
                     lcd.set_size(0x02);
-                    lcd.print(smooth);
+                    lcd.print(ground_speed);
+
                     lcd.set_size(0x01);
-                    lcd.print("m");
-                    // Print Vx
-                    if(ground_speed >= 0.0f){
-                        lcd.setCursor(0,3);
-                        lcd.print("Vx :");
-                        lcd.print(ground_speed);
-                        lcd.print(" km/h");
-                    }
+                    lcd.print("km/h  ");
+                    lcd.setCursor(0,3);
+                    lcd.print(smooth);
+                    lcd.print(" m    ");
+
                     lcd.set_size(0x02);
                     lcd.setCursor(0,4); 
                     if(derivative>0.0){lcd.print("+");}
@@ -433,10 +446,6 @@ void do_menu(){
                 }
                 count = 0;
                 break;
-            /*case 4 :
-                count = 0;
-                break;
-           */ 
            default:
                 break;
         }
