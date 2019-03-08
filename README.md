@@ -1,4 +1,4 @@
-# variometre
+# Variometre
 
 
 Here the first Paragliding Computer I've designed : 
